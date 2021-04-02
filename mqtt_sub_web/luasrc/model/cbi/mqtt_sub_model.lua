@@ -72,7 +72,7 @@ use_tls_ssl.rmempty = false
 
 tls_type = s:option(ListValue, "tls_type", translate("TLS Type"), translate("Select the type of TLS encryption"))
 tls_type:depends({use_tls_ssl = "1"})
-tls_type:value("cert", translate("Certificate based"))
+tls_type:value("crt", translate("Certificate based"))
 tls_type:value("psk", translate("Pre-Shared-Key based"))
 
 --- Certificates from browser ---
@@ -80,26 +80,31 @@ tls_type:value("psk", translate("Pre-Shared-Key based"))
 tls_insecure = s:option(Flag, "tls_insecure", translate("Allow insecure connection"), translate("Allow not verifying server authenticity"))
 tls_insecure.default = "0"
 tls_insecure.rmempty = false
-tls_insecure:depends({use_tls_ssl="1", tls_type = "cert"})
+tls_insecure:depends({use_tls_ssl="1", tls_type = "crt"})
 
 local certificates_link = luci.dispatcher.build_url("admin", "system", "admin", "certificates")
 o = s:option(Flag, "_device_sec_files", translate("Certificate files from device"), translatef("Choose this option if you want to select certificate files from device.\
 Certificate files can be generated <a class=link href=%s>%s</a>", certificates_link, translate("here")))
-o:depends({use_tls_ssl="1", tls_type = "cert"})
+o:depends({use_tls_ssl="1", tls_type = "crt"})
+
+FileUpload.size = "262144"
+FileUpload.sizetext = translate("Selected file is too large, max 256 KiB")
+FileUpload.sizetextempty = translate("Selected file is empty")
+FileUpload.unsafeupload = true
 
 ca_file = s:option(FileUpload, "ca_file", translate("CA File"), translate("Upload CA file"));
-ca_file:depends({use_tls_ssl="1", _device_sec_files="", tls_type = "cert"})
+ca_file:depends({use_tls_ssl="1", _device_sec_files="", tls_type = "crt"})
 
 cert_file = s:option(FileUpload, "cert_file", translate("CERT File"), translate("Upload CERT file"));
-cert_file:depends({use_tls_ssl="1", _device_sec_files="", tls_type = "cert"})
+cert_file:depends({use_tls_ssl="1", _device_sec_files="", tls_type = "crt"})
 
 key_file = s:option(FileUpload, "key_file", translate("Key File"), translate("Upload Key file"));
-key_file:depends({use_tls_ssl="1", _device_sec_files="", tls_type = "cert"})
+key_file:depends({use_tls_ssl="1", _device_sec_files="", tls_type = "crt"})
 
 --- Certificates from the device ---
 
 ca_file = s:option(ListValue, "_device_ca_file", translate("CA File"), translate("Select CA file"));
-ca_file:depends({use_tls_ssl="1", _device_sec_files="1", tls_type = "cert"})
+ca_file:depends({use_tls_ssl="1", _device_sec_files="1", tls_type = "crt"})
 
 if #cas > 0 then
     for _,ca in pairs(cas) do
@@ -113,8 +118,12 @@ function ca_file.write(self, section, value)
     map.uci:set(self.config, section, "ca_file", value)
 end
 
+ca_file.cfgvalue = function(self, section)
+        return map.uci:get(map.config, section, "ca_file") or ""
+end
+
 cert_file = s:option(ListValue, "_device_cert_file", translate("CERT File"), translate("Select CERT file"));
-cert_file:depends({use_tls_ssl="1", _device_sec_files="1", tls_type = "cert"})
+cert_file:depends({use_tls_ssl="1", _device_sec_files="1", tls_type = "crt"})
 
 if #certificates > 0 then
         for _,cert in pairs(certificates) do
@@ -128,8 +137,12 @@ function cert_file.write(self, section, value)
         map.uci:set(self.config, section, "cert_file", value)
 end
 
+cert_file.cfgvalue = function(self, section)
+        return map.uci:get(map.config, section, "cert_file") or ""
+end
+
 key_file = s:option(ListValue, "_device_key_file", translate("Key File"), translate("Select Key file"));
-key_file:depends({use_tls_ssl="1", _device_sec_files="1", tls_type = "cert"})
+key_file:depends({use_tls_ssl="1", _device_sec_files="1", tls_type = "crt"})
 
 if #keys > 0 then
         for _,key in pairs(keys) do
@@ -141,6 +154,10 @@ end
 
 function key_file.write(self, section, value)
         map.uci:set(self.config, section, "key_file", value)
+end
+
+key_file.cfgvalue = function(self, section)
+        return map.uci:get(map.config, section, "key_file") or ""
 end
 
 --- Pre shared key options ---

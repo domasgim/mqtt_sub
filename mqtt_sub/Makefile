@@ -22,8 +22,10 @@ define Package/mqtt_sub/install
 	$(INSTALL_DIR) $(1)/usr/bin
 	$(INSTALL_DIR) $(1)/etc/config
 	$(INSTALL_DIR) $(1)/etc/init.d
+	$(INSTALL_DIR) $(1)/log
 	$(INSTALL_BIN) $(PKG_BUILD_DIR)/mqtt_sub $(1)/usr/bin/mqtt_sub
 	$(INSTALL_BIN) ./files/mqtt_sub.init $(1)/etc/init.d/mqtt_sub
+	$(INSTALL_BIN) ./files/mqtt_sub.db $(1)/log
 endef
 
 $(eval $(call BuildPackage,mqtt_sub))

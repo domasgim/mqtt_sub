@@ -50,51 +50,7 @@ function get_events()
 					table.insert(messages, {date = row[2], sender = row[3], event = row[4]})
 				end
 			end
-			if events_table then
-				for row in db:rows("select * from events") do
-					table.insert(messages, {date = os.date('%Y-%m-%d %H:%M:%S', tonumber(row[2])), sender = row[3], event = row[5]})
-				end
-			end
-			if system_table then
-				for row in db:rows("select * from system") do
-					table.insert(messages, {date = os.date('%Y-%m-%d %H:%M:%S', tonumber(row[2])), sender = row[3], event = row[5]})
-				end
-			end
-			if network_table then
-				for row in db:rows("select * from network") do
-					table.insert(messages, {date = os.date('%Y-%m-%d %H:%M:%S', tonumber(row[2])), sender = row[3], event = row[5]})
-				end
-			end
-			if connections_table then
-				for row in db:rows("select * from connections") do
-					table.insert(messages, {date = os.date('%Y-%m-%d %H:%M:%S', tonumber(row[2])), sender = row[3], event = row[5]})
-				end
-			end
 			table.sort(messages, tableSort)
-			db:close()
-			return messages
-		elseif curdev[#curdev] == "events" and events_table then
-			for row in db:rows("select * from events order by time desc") do
-				table.insert(messages, {date = os.date('%Y-%m-%d %H:%M:%S', tonumber(row[2])), sender = row[3], event = row[5]})
-			end
-			db:close()
-			return messages
-		elseif curdev[#curdev] == "system" and system_table then
-			for row in db:rows("select * from system order by time desc") do
-				table.insert(messages, {date = os.date('%Y-%m-%d %H:%M:%S', tonumber(row[2])), sender = row[3], event = row[5]})
-			end
-			db:close()
-			return messages
-		elseif curdev[#curdev] == "network" and network_table then
-			for row in db:rows("select * from network order by time desc") do
-				table.insert(messages, {date = os.date('%Y-%m-%d %H:%M:%S', tonumber(row[2])), sender = row[3], event = row[5]})
-			end
-			db:close()
-			return messages
-		elseif curdev[#curdev] == "connections" and connections_table then
-			for row in db:rows("select * from connections order by time desc") do
-				table.insert(messages, {date = os.date('%Y-%m-%d %H:%M:%S', tonumber(row[2])), sender = row[3], event = row[5]})
-			end
 			db:close()
 			return messages
 		end
