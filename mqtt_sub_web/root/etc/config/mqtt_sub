@@ -1,7 +1,8 @@
 config mqtt_sub 'config'
-        option request '#'
         option host '192.168.1.1'
-        option use_username_pw '1'
         option enable '0'
-        option use_tls_ssl '0'
         option port '1883'
+
+config mqtt_sub 'security'
+        option use_username_pw '1'
+        option use_tls_ssl '0'

@@ -22,13 +22,8 @@ port.default = "1883"
 ---------------------------- Subscriber Settings ----------------------------
 
 local s2
-s2 = map:section(NamedSection, "config", "mqtt_sub", translate("Security"), "")
--- s2.template = "mqtt/tsection"
--- s2.anonymous = true
--- FileUpload.unsafeupload = true
--- function s2.cfgsections(self)
---         return {"mqtt_sub"}
--- end
+s2 = map:section(NamedSection, "security", "mqtt_sub", translate("Security"), "")
+FileUpload.unsafeupload = true
 
 ---------------------------- Security Tab ----------------------------
 
@@ -39,7 +34,7 @@ use_username_pw.rmempty = false
 username = s2:option(Value, "username", translate("Username"), translate("Specify username of remote host"))
 username.datatype = "credentials_validate"
 username.placeholder = translate("Username")
--- username:depends({use_username_pw="0"})
+username:depends({use_username_pw=""})
 username.parse = function(self, section, novld, ...)
         local pass = luci.http.formvalue("cbid.mqtt_sub.config.password")
         local value = self:formvalue(section)
@@ -53,7 +48,7 @@ password = s2:option(Value, "password", translate("Password"), translate("Specif
 password.password = true
 password.datatype = "credentials_validate"
 password.placeholder = translate("Password")
--- password:depends({use_username_pw="0"})
+password:depends({use_username_pw=""})
 password.parse = function(self, section, novld, ...)
         local user = luci.http.formvalue("cbid.mqtt_sub.config.username")
         local value = self:formvalue(section)
