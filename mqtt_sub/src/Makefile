@@ -1,14 +1,19 @@
-BIN:=mqtt_sub
+DEPS = $(wildcard *.h)
+SRC = $(wildcard src/*.c)
+OBJ = $(patsubst %.c, %.o, $(SRC))
+TARGET = mqtt_sub
+LDFLAGS+=-luci -lmosquitto -lsqlite3
+RM = rm -f
 
-.PHONY: all clean
+all: $(TARGET)
 
-CFLAGS += -Wall -std=gnu99
-LDFLAGS := -luci -lmosquitto -lsqlite3
+%.o: %.c $(DEPS)
+	$(CC) -c -o $@ $< $(CFLAGS)
 
-all: $(BIN)
+$(TARGET): $(OBJ)
+	$(CC) -o $@ $^ $(LDFLAGS)
 
-$(BIN): mqtt_sub.c
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+.PHONY: clean
 
 clean:
-	rm -f $(BIN)
+	$(RM) $(OBJ) $(TARGET)
