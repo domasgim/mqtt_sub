@@ -10,7 +10,7 @@ m.redirect = luci.dispatcher.build_url("admin/services/mqtt/subscriber/topics/")
 local topic_name = m.uci:get(sid, "topic") or ""
 local qos = m.uci:get(sid, "qos") or ""
 
-s = m:section(NamedSection, sid, "topic", translatef("Topic '%s' settings", topic_name))
+s = m:section(NamedSection, sid, "topic", translate("Topic settings"))
 
 topic = s:option(Value, "topic", translate("Topic name"))
 topic.datatype = "string"

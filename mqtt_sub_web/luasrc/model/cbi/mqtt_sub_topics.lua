@@ -41,6 +41,7 @@ s.create = function(self)
 
     self.defaults = {
         topic = topic,
+        qos = 0
 	}
 	
 	local created = TypedSection.create(self)
