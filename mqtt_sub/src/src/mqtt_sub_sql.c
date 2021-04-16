@@ -12,19 +12,10 @@ static int sqlite_callback(void *data, int argc, char **argv, char **azColName) 
    return 0;
 }
 
-int sqlite3_insert(char * topic, char * message) {
-    sqlite3 *db;
+int sqlite3_insert(sqlite3 * db, char * topic, char * message) {
     char *zErrMsg = 0;
     int rc = 0;
     char *sql;
-
-    /* Open database */
-    rc = sqlite3_open("/log/mqtt_sub.db", &db);
-
-    if( rc ) {
-        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
-        return -1;
-    } 
 
     /* Create SQL statement */
     sql = sqlite3_mprintf("INSERT INTO RECEIVED_MESSAGES (date, topic, message) VALUES (CURRENT_TIMESTAMP, '%s', '%s');", topic, message);
@@ -37,7 +28,5 @@ int sqlite3_insert(char * topic, char * message) {
         sqlite3_free(zErrMsg);
         return rc;
     } 
-    
-    sqlite3_close(db);
     return 0;
 }

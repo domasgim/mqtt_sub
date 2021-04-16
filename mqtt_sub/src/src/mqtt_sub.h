@@ -82,7 +82,7 @@ static int sqlite_callback(void *data, int argc, char **argv, char **azColName);
  * @param message received mqtt message contents
  * @return int return code
  */
-int sqlite3_insert(char * topic, char * message);
+int sqlite3_insert(sqlite3 * db, char * topic, char * message);
 
 /**
  * @brief Set mosquitto subscriber's username and password if appropriate UCI options are set
@@ -99,5 +99,13 @@ int mosq_set_username_pw(struct mosquitto * mosq);
  * @return int return code
  */
 int mosq_set_tls(struct mosquitto * mosq);
+
+/**
+ * @brief Set mosquitto subscriber's password, TLS and callbacks
+ * 
+ * @param mosq mosquitto subscriber object
+ * @return int return code
+ */
+int mosq_setup(struct mosquitto * mosq);
 
 #endif

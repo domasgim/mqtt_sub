@@ -1,0 +1,44 @@
+<% if not self.anonymous then %>
+	<h3 class="content-title note-after hoverable" onclick="toggleContent(this, 'mqtt_sub.topic.add_toggle')">
+	<div class="toggle-arrow expanded"><img src="<%=media%>/img/icons/arrow-toggle.svg"></div>
+	<span>
+		<%- if self.add_title then -%>
+			<%=self.add_title%>
+		<% elseif not self.dont_show_add then %>
+			<%:Add%>
+		<% end -%>
+			<div class="label-info"><%:Add a new topic%></div>
+		</span>
+	</h3>
+<% end %>
+<div id="mqtt_sub.topic.add_toggle" class="toggle-content">
+    <div class="table-wrapper toggle-content table-addremove">
+        <table>
+            <thead>
+                <tr>
+                    <th class="content-title hoverable" style="border: 0;">
+                        <span>
+                            <%:Topic name%>
+                        </span>
+                    </th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            <tr>
+                <td class="input-cell">
+                    <div class="div-heading"><%:Topic%></div>
+                    <input type="text" id="_topic_name" name="_topic_name"/>
+                </td>
+            </td>
+            <td>
+                <input type="submit" value="<%:Add%>" title="<%:Add%>" class="btn"
+            name="cbi.cts.<%=self.config%>.<%=self.sectiontype%>.add"
+                        onclick="this.form.cbi_state='add-section';"
+                />
+            </td>
+            </tr>
+            </tbody>
+        </table>
+    </div>
+</div>

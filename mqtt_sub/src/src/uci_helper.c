@@ -15,16 +15,13 @@ char * get_config_entry(char *path, char *option) {
     
     uci_foreach_element(&pkg->sections, e)  {
         char * value_temp;
-        // char * value;
         struct uci_section * s = uci_to_section (e);
         value_temp = uci_lookup_option_string(ctx, s, option);
         if(value_temp != NULL) {
             value = strdup(value_temp);
             got_value = 1;
-            //printf("Value: %s\n", value);
         }
     }
-    // printf("Value: %s\n", value);
     uci_unload(ctx, pkg);
     cleanup:  
         uci_free_context(ctx);
@@ -53,17 +50,14 @@ list_t * get_config_entry_list(char *path, char *option) {
     
     uci_foreach_element(&pkg->sections, e)  {
         char * value_temp;
-        // char * value;
         struct uci_section * s = uci_to_section (e);
         value_temp = uci_lookup_option_string(ctx, s, option);
         if(value_temp != NULL) {
             value = strdup(value_temp);
             got_value = 1;
-            //printf("Value: %s\n", value);
             list_rpush(entry_list, list_node_new(value));
         }
     }
-    // printf("Value: %s\n", value);
     uci_unload(ctx, pkg);
     cleanup:  
         uci_free_context(ctx);
@@ -73,5 +67,4 @@ list_t * get_config_entry_list(char *path, char *option) {
         } else {
             return NULL;
         }
-    // return entry_list;
 }
