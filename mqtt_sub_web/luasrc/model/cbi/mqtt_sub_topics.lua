@@ -1,3 +1,4 @@
+
 require("luci.config")
 
 local uci = require("luci.model.uci").cursor()
@@ -14,6 +15,7 @@ s.noname = true
 s.delete_alert = true
 s.alert_message = translate("Are you sure you want to delete this topic?")
 s.template = "cbi/tblsection"
+-- s.template_addremove = "cbi/general_addremove"
 s.template_addremove = "mqtt_sub/add_topic"
 s.extedit = luci.dispatcher.build_url("admin/services/mqtt/subscriber/topics/%s")
 
@@ -21,6 +23,7 @@ s.create = function(self)
     local ret
     local exists = false
     local topic = self.map:formvalue("_topic_name")
+    -- local qos = self.map:formvalue("_topic_qos")
     self.map.uci:foreach(self.config, self.sectiontype, function(s)
         if s.topic and s.topic == topic then
             exists = true
@@ -40,18 +43,36 @@ s.create = function(self)
     end
 
     self.defaults = {
-        topic = topic,
-        qos = 0
+        topic = topic
+        -- qos = qos
 	}
 	
 	local created = TypedSection.create(self)
-	if created then
+    if created then
+        self.map:set(created, "section_id", created)
 		m.uci:commit(m.config)
 		luci.http.redirect(
 			ds.build_url("admin/services/mqtt/subscriber/topics/%s")
 		)
 	end
 	return created
+end
+
+function s.remove(self, section)
+    if (section) then
+        local section_id = self.map.uci:get(self.config, section, "section_id")
+		if (section_id) then
+			m.uci:foreach("mqtt_sub", section_id, function(s)
+				m.uci:delete("mqtt_sub", section_id)
+			end)
+		end
+    end
+    
+    m.uci:delete("mqtt_sub", section)
+	m.uci:save("mqtt_sub")
+    m.uci:commit("mqtt_sub")
+    
+    luci.http.redirect(ds.build_url("admin/services/mqtt/subscriber/topics"))
 end
 
 s:option( DummyValue, "topic", translate("Topic name"))

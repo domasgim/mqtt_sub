@@ -1,15 +1,136 @@
 #include "list.h"
 #include "mqtt_sub.h"
+#include "cJSON.h"
+#include <uci.h>
+#include <curl/curl.h>
+
+#define EMAIL_PATH "/tmp/email_text.txt"
 
 atomic_int interrupt = 0;
-
-/* Used to create a connection to the database at startup and passed 
-to on_message callback (should not be used globally but I haven't figured 
-out how to pass arguments to mosquitto callbacks yet) */
 sqlite3 *db;
+
 
 void sigHandler(int signo) {
 	interrupt = 1;
+}
+
+int process_events(char * section_id, char * topic, char * payload) {
+    int section_iteration = 0;
+    int rc = 0;
+
+    cJSON *json_payload = cJSON_Parse(payload);
+    if (json_payload == NULL) {
+        const char *error_ptr = cJSON_GetErrorPtr();
+        if (error_ptr != NULL)
+        {
+            fprintf(stderr, "Error before: %s\n", error_ptr);
+        }
+        rc = -1;
+        goto end;
+    }
+
+    while (section_iteration < 255) {
+        const cJSON *json_val = NULL;
+        const cJSON *json_val_name = NULL;
+        char json_command_buffer[64];
+        char type_command_buffer[64];
+        char operator_command_buffer[64];
+        char comparison_val_command_buffer[64];
+        char email_group_buffer[64];
+        char recip_email_buffer[64];
+        char strcmp_command_buffer[64];
+
+        snprintf(json_command_buffer, 64, "mqtt_sub.@%s[%i].json_val", section_id, section_iteration);
+        snprintf(type_command_buffer, 64, "mqtt_sub.@%s[%i].val_type", section_id, section_iteration);
+        snprintf(operator_command_buffer, 64, "mqtt_sub.@%s[%i].operator", section_id, section_iteration);
+        snprintf(comparison_val_command_buffer, 64, "mqtt_sub.@%s[%i].comparison_val", section_id, section_iteration);
+        snprintf(email_group_buffer, 64, "mqtt_sub.@%s[%i].email_group", section_id, section_iteration);
+        snprintf(recip_email_buffer, 64, "mqtt_sub.@%s[%i].recip_email", section_id, section_iteration);
+
+        char * json_val_str = uci_get_config_entry_V2(json_command_buffer);
+        char * val_type = uci_get_config_entry_V2(type_command_buffer);
+        char * operator = uci_get_config_entry_V2(operator_command_buffer);
+        char * comparison_val = uci_get_config_entry_V2(comparison_val_command_buffer);
+        char * email_group = uci_get_config_entry_V2(email_group_buffer);
+        char * recip_email = uci_get_config_entry_V2(recip_email_buffer);
+
+        if (json_val_str == NULL || val_type == NULL || operator == NULL || comparison_val == NULL
+            || email_group == NULL || recip_email == NULL) {
+                goto end;
+        }
+        json_val = cJSON_GetObjectItemCaseSensitive(json_payload, json_val_str);
+
+        if(strcmp(val_type, "string") == 0 && cJSON_IsString(json_val) && (json_val->valuestring != NULL)) {
+            if(strcmp(operator, "=") == 0) {
+                if(strcmp(json_val->valuestring, comparison_val) == 0) { 
+                    printf("Event match on %s - %s: %s %s %s\n", topic, json_val_str, json_val->valuestring, operator, comparison_val);
+                    curl_send_email(email_group, recip_email, topic, json_val_str, json_val, operator, comparison_val);
+                }
+            } else if (strcmp(operator, "!=") == 0) {
+                if(strcmp(json_val->valuestring, comparison_val) != 0) { 
+                    printf("Event match on %s - %s: %s %s %s\n", topic, json_val_str, json_val->valuestring, operator, comparison_val);
+                    curl_send_email(email_group, recip_email, topic, json_val_str, json_val, operator, comparison_val);
+                }
+            } else if (strcmp(operator, "<") == 0) {
+                if(strcmp(json_val->valuestring, comparison_val) < 0) { 
+                    printf("Event match on %s - %s: %s %s %s\n", topic, json_val_str, json_val->valuestring, operator, comparison_val);
+                    curl_send_email(email_group, recip_email, topic, json_val_str, json_val, operator, comparison_val);
+                }
+            } else if (strcmp(operator, "<=") == 0) {
+                if(strcmp(json_val->valuestring, comparison_val) <= 0) { 
+                    printf("Event match on %s - %s: %s %s %s\n", topic, json_val_str, json_val->valuestring, operator, comparison_val);
+                    curl_send_email(email_group, recip_email, topic, json_val_str, json_val, operator, comparison_val);
+                }
+            } else if (strcmp(operator, ">") == 0) {
+                if(strcmp(json_val->valuestring, comparison_val) > 0) { 
+                    printf("Event match on %s - %s: %s %s %s\n", topic, json_val_str, json_val->valuestring, operator, comparison_val);
+                    curl_send_email(email_group, recip_email, topic, json_val_str, json_val, operator, comparison_val);
+                }
+            } else if (strcmp(operator, ">=") == 0) {
+                if(strcmp(json_val->valuestring, comparison_val) >= 0) { 
+                    printf("Event match on %s - %s: %s %s %s\n", topic, json_val_str, json_val->valuestring, operator, comparison_val);
+                    curl_send_email(email_group, recip_email, topic, json_val_str, json_val, operator, comparison_val);
+                }
+            }
+        } else if(strcmp(val_type, "int") == 0 && cJSON_IsNumber(json_val) && (json_val->valueint != NULL)) {
+            int comparison_val_int = (int) strtol(comparison_val, (char **)NULL, 10);
+            if(strcmp(operator, "=") == 0) {
+                if(json_val->valueint == comparison_val_int) { 
+                    printf("Event match on %s - %s: %d %s %s\n", topic, json_val_str, json_val->valueint, operator, comparison_val);
+                    curl_send_email(email_group, recip_email, topic, json_val_str, json_val, operator, comparison_val);
+                }
+            } else if(strcmp(operator, "!=") == 0) {
+                if(json_val->valueint != comparison_val_int) { 
+                    printf("Event match on %s - %s: %d %s %s\n", topic, json_val_str, json_val->valueint, operator, comparison_val);
+                    curl_send_email(email_group, recip_email, topic, json_val_str, json_val, operator, comparison_val);
+                }
+            } else if(strcmp(operator, "<") == 0) {
+                if(json_val->valueint < comparison_val_int) { 
+                    printf("Event match on %s - %s: %d %s %s\n", topic, json_val_str, json_val->valueint, operator, comparison_val);
+                    curl_send_email(email_group, recip_email, topic, json_val_str, json_val, operator, comparison_val);
+                }
+            } else if(strcmp(operator, "<=") == 0) {
+                if(json_val->valueint <= comparison_val_int) { 
+                    printf("Event match on %s - %s: %d %s %s\n", topic, json_val_str, json_val->valueint, operator, comparison_val);
+                    curl_send_email(email_group, recip_email, topic, json_val_str, json_val, operator, comparison_val);
+                }
+            } else if(strcmp(operator, ">") == 0) {
+                if(json_val->valueint > comparison_val_int) { 
+                    printf("Event match on %s - %s: %d %s %s\n", topic, json_val_str, json_val->valueint, operator, comparison_val);
+                    curl_send_email(email_group, recip_email, topic, json_val_str, json_val, operator, comparison_val);
+                }
+            } else if(strcmp(operator, ">=") == 0) {
+                if(json_val->valueint >= comparison_val_int) { 
+                    printf("Event match on %s - %s: %d %s %s\n", topic, json_val_str, json_val->valueint, operator, comparison_val);
+                    curl_send_email(email_group, recip_email, topic, json_val_str, json_val, operator, comparison_val);
+                }
+            }
+        }
+        section_iteration++;
+    }
+    end:
+        cJSON_Delete(json_payload);
+        return rc;
 }
 
 void on_connect(struct mosquitto *mosq, void *obj, int reason_code) {
@@ -55,6 +176,11 @@ void on_connect(struct mosquitto *mosq, void *obj, int reason_code) {
 void on_message(struct mosquitto *mosq, void *obj, const struct mosquitto_message *msg) {
 	printf("Message received on topic %s: %s\n", msg->topic, (char *) msg->payload);
     sqlite3_insert(db, msg->topic, (char *) msg->payload);
+    char * sid = uci_get_topic_section_id(msg->topic);
+    if (sid != NULL) {
+        // printf("SID: %s\n", sid);
+        process_events(sid, msg->topic, msg->payload);
+    }
 }
 
 void on_subscribe(struct mosquitto *mosq, void *obj, int mid, int qos_count, const int *granted_qos) {
@@ -149,6 +275,23 @@ int mosq_setup(struct mosquitto * mosq) {
 		return rc;
 	}
 
+    return 0;
+}
+
+int create_email_file(char * sender_address, char * recipient_address, char * topic, char * json_name, char * json_value, char * operator, char * comparison_val) {
+    FILE * fPtr;
+    fPtr = fopen(EMAIL_PATH, "w");
+    if (fPtr == NULL) {
+        fprintf(stderr, "Unable to create a file on /tmp/email_text.txt\n");
+        return -1;
+    }
+
+    char payload_buffer[2048];
+    snprintf(payload_buffer, sizeof(payload_buffer), "From: <%s>\nTo: <%s>\nSubject: MQTT event\nMQTT subscriber received a JSON value and met the condition\n%s - %s: %s %s %s\n",
+        sender_address, recipient_address, topic, json_name, json_value, operator, comparison_val);
+
+    fputs(payload_buffer, fPtr);
+    fclose(fPtr);
     return 0;
 }
 

@@ -1,13 +1,3 @@
-<!-- <%
-local i, k
-local user_groups = {}
-self.map.uci:foreach("rpcd", "group", function(section)
-    if section[".name"] ~= "root" then
-        table.insert(user_groups, section[".name"])
-    end
-end)
-%> -->
-
 <% if not self.anonymous then %>
 	<h3 class="content-title note-after hoverable" onclick="toggleContent(this, 'mqtt_sub.topic.add_toggle')">
 	<div class="toggle-arrow expanded"><img src="<%=media%>/img/icons/arrow-toggle.svg"></div>
@@ -26,11 +16,6 @@ end)
         <table>
             <thead>
                 <tr>
-                    <th class="content-title hoverable" style="border: 0;">
-                        <span>
-                            <%:Topic name%>
-                        </span>
-                    </th>
                     <!-- <th class="content-title hoverable" style="border: 0;">
                         <span>
                             <%:QOS Level%>
@@ -41,10 +26,6 @@ end)
             </thead>
             <tbody>
             <tr>
-                <td class="input-cell">
-                    <div class="div-heading"><%:Topic%></div>
-                    <input type="text" id="_topic_name" name="_topic_name"/>
-                </td>
                 <!-- <td class="input-cell">
                     <select class="cbi-input-select" id="_topic_qos" name="_topic_qos">
                         <option value="0">At most once (0)</option>
