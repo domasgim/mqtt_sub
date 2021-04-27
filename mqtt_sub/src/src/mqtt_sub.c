@@ -164,8 +164,8 @@ void on_connect(struct mosquitto *mosq, void *obj, int reason_code) {
         exit(-1);
 	}
 
-    topic_list = get_config_entry_list("mqtt_sub", "topic");
-    qos_list = get_config_entry_list("mqtt_sub", "qos");
+    topic_list = uci_get_config_entry_list("mqtt_sub", "topic");
+    qos_list = uci_get_config_entry_list("mqtt_sub", "qos");
 
     if(topic_list == NULL || qos_list == NULL || topic_list->len != qos_list->len) {
         printf("No entries found or some values are missing\n");
@@ -215,13 +215,13 @@ void on_subscribe(struct mosquitto *mosq, void *obj, int mid, int qos_count, con
 
 int mosq_set_username_pw(struct mosquitto * mosq) {
     int rc = 0;
-    char * use_username_pw = get_config_entry("mqtt_sub", "use_username_pw");
+    char * use_username_pw = uci_get_config_entry("mqtt_sub", "use_username_pw");
 
     int username_pw_flag = (int) strtol(use_username_pw, (char **)NULL, 10);
 
     if(username_pw_flag == 0) {
-        char * username = get_config_entry("mqtt_sub", "username");
-        char * password = get_config_entry("mqtt_sub", "password");
+        char * username = uci_get_config_entry("mqtt_sub", "username");
+        char * password = uci_get_config_entry("mqtt_sub", "password");
 
         rc = mosquitto_username_pw_set(mosq, username, password);
         if(rc) {
@@ -232,14 +232,14 @@ int mosq_set_username_pw(struct mosquitto * mosq) {
 }
 
 int mosq_set_tls(struct mosquitto * mosq) {
-    char * use_tls = get_config_entry("mqtt_sub", "use_tls_ssl");
+    char * use_tls = uci_get_config_entry("mqtt_sub", "use_tls_ssl");
     int tls_flag = (int) strtol(use_tls, (char **)NULL, 10);
     int rc = 0;
 
     if (tls_flag == 1) {
-        char * ca_file = get_config_entry("mqtt_sub", "ca_file");
-        char * cert_file = get_config_entry("mqtt_sub", "cert_file");
-        char * key_file = get_config_entry("mqtt_sub", "key_file");
+        char * ca_file = uci_get_config_entry("mqtt_sub", "ca_file");
+        char * cert_file = uci_get_config_entry("mqtt_sub", "cert_file");
+        char * key_file = uci_get_config_entry("mqtt_sub", "key_file");
 
         if(ca_file == NULL || cert_file == NULL || key_file == NULL) {
             fprintf(stderr, "Error getting certificate files\n");
@@ -259,8 +259,8 @@ int mosq_setup(struct mosquitto * mosq) {
     int rc = 0;
     int id = 12;
 
-    char * host = get_config_entry("mqtt_sub", "host");
-    char * port_str = get_config_entry("mqtt_sub", "port");
+    char * host = uci_get_config_entry("mqtt_sub", "host");
+    char * port_str = uci_get_config_entry("mqtt_sub", "port");
 
     if (host == NULL || port_str == NULL) {
         fprintf(stderr, "Error: no host or port address specified\n");

@@ -28,7 +28,7 @@
  * @param option UCI configuration entry name
  * @return char* option
  */
-char * get_config_entry(char *path, char *option);
+char * uci_get_config_entry(char *path, char *option);
 
 /**
  * @brief Get UCI configuration option
@@ -45,7 +45,7 @@ char * uci_get_config_entry_V2 (char *path);
  * @param option UCI configuration entry name
  * @return list_t* entry list
  */
-list_t * get_config_entry_list(char *path, char *option);
+list_t * uci_get_config_entry_list(char *path, char *option);
 
 /**
  * @brief Find the user_group UCI configuration section iteration according to the specified email group. 

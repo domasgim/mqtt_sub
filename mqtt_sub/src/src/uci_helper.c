@@ -75,7 +75,7 @@ char * uci_get_config_entry_V2 (char *path) {
         return NULL;
 }
 
-char * get_config_entry(char *path, char *option) {
+char * uci_get_config_entry(char *path, char *option) {
     static  struct uci_context * ctx = NULL;
     struct uci_package * pkg = NULL;  
     struct uci_element * e; 
@@ -108,7 +108,7 @@ char * get_config_entry(char *path, char *option) {
         }
 }
 
-list_t * get_config_entry_list(char *path, char *option) {
+list_t * uci_get_config_entry_list(char *path, char *option) {
     list_t *entry_list = list_new();
 
     static  struct uci_context * ctx = NULL;
