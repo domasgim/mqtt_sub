@@ -1,17 +1,25 @@
-#include "list.h"
 #include "mqtt_sub.h"
-#include "cJSON.h"
-#include <uci.h>
-#include <curl/curl.h>
-
-#define EMAIL_PATH "/tmp/email_text.txt"
 
 atomic_int interrupt = 0;
+
+/**
+ * @brief Database variable. Used when opening it
+ * during startup and passing ONLY to MQTT on_message callback to store
+ * topic information to sqlite3 database
+ * 
+ */
 sqlite3 *db;
 
 
 void sigHandler(int signo) {
 	interrupt = 1;
+}
+
+int digits_only(char * s) {
+    while (*s) {
+        if (isdigit(*s++) == 0) return 0;
+    }
+    return 1;
 }
 
 int process_events(char * section_id, char * topic, char * payload) {
@@ -28,7 +36,8 @@ int process_events(char * section_id, char * topic, char * payload) {
         rc = -1;
         goto end;
     }
-
+    /* The mqtt_sub UCI configuration can contain information about events which have the same section ID of the topic. 
+    We iterate through all of the available event sections and if a match is found, we send an email */
     while (section_iteration < 255) {
         const cJSON *json_val = NULL;
         const cJSON *json_val_name = NULL;
@@ -40,12 +49,12 @@ int process_events(char * section_id, char * topic, char * payload) {
         char recip_email_buffer[64];
         char strcmp_command_buffer[64];
 
-        snprintf(json_command_buffer, 64, "mqtt_sub.@%s[%i].json_val", section_id, section_iteration);
-        snprintf(type_command_buffer, 64, "mqtt_sub.@%s[%i].val_type", section_id, section_iteration);
-        snprintf(operator_command_buffer, 64, "mqtt_sub.@%s[%i].operator", section_id, section_iteration);
-        snprintf(comparison_val_command_buffer, 64, "mqtt_sub.@%s[%i].comparison_val", section_id, section_iteration);
-        snprintf(email_group_buffer, 64, "mqtt_sub.@%s[%i].email_group", section_id, section_iteration);
-        snprintf(recip_email_buffer, 64, "mqtt_sub.@%s[%i].recip_email", section_id, section_iteration);
+        snprintf(json_command_buffer, sizeof(json_command_buffer), "mqtt_sub.@%s[%i].json_val", section_id, section_iteration);
+        snprintf(type_command_buffer, sizeof(type_command_buffer), "mqtt_sub.@%s[%i].val_type", section_id, section_iteration);
+        snprintf(operator_command_buffer, sizeof(operator_command_buffer), "mqtt_sub.@%s[%i].operator", section_id, section_iteration);
+        snprintf(comparison_val_command_buffer, sizeof(comparison_val_command_buffer), "mqtt_sub.@%s[%i].comparison_val", section_id, section_iteration);
+        snprintf(email_group_buffer, sizeof(email_group_buffer), "mqtt_sub.@%s[%i].email_group", section_id, section_iteration);
+        snprintf(recip_email_buffer, sizeof(recip_email_buffer), "mqtt_sub.@%s[%i].recip_email", section_id, section_iteration);
 
         char * json_val_str = uci_get_config_entry_V2(json_command_buffer);
         char * val_type = uci_get_config_entry_V2(type_command_buffer);
@@ -60,6 +69,9 @@ int process_events(char * section_id, char * topic, char * payload) {
         }
         json_val = cJSON_GetObjectItemCaseSensitive(json_payload, json_val_str);
 
+        /* This part is a bit messy but it's purpose is to actually do the comparison part. We now have the operator value (+, -, =, etc.),
+        the JSON value and the value to be compared to.
+        */
         if(strcmp(val_type, "string") == 0 && cJSON_IsString(json_val) && (json_val->valuestring != NULL)) {
             if(strcmp(operator, "=") == 0) {
                 if(strcmp(json_val->valuestring, comparison_val) == 0) { 
@@ -93,6 +105,11 @@ int process_events(char * section_id, char * topic, char * payload) {
                 }
             }
         } else if(strcmp(val_type, "int") == 0 && cJSON_IsNumber(json_val) && (json_val->valueint != NULL)) {
+            if(digits_only(comparison_val) != 1) {
+                fprintf(stderr, "Error: specified integer number to be compared to but the comparison contains characters (%s)\n", comparison_val);
+                rc = -1;
+                goto end;
+            }
             int comparison_val_int = (int) strtol(comparison_val, (char **)NULL, 10);
             if(strcmp(operator, "=") == 0) {
                 if(json_val->valueint == comparison_val_int) { 
@@ -177,10 +194,7 @@ void on_message(struct mosquitto *mosq, void *obj, const struct mosquitto_messag
 	printf("Message received on topic %s: %s\n", msg->topic, (char *) msg->payload);
     sqlite3_insert(db, msg->topic, (char *) msg->payload);
     char * sid = uci_get_topic_section_id(msg->topic);
-    if (sid != NULL) {
-        // printf("SID: %s\n", sid);
-        process_events(sid, msg->topic, msg->payload);
-    }
+    process_events(sid, msg->topic, msg->payload);
 }
 
 void on_subscribe(struct mosquitto *mosq, void *obj, int mid, int qos_count, const int *granted_qos) {
@@ -275,23 +289,6 @@ int mosq_setup(struct mosquitto * mosq) {
 		return rc;
 	}
 
-    return 0;
-}
-
-int create_email_file(char * sender_address, char * recipient_address, char * topic, char * json_name, char * json_value, char * operator, char * comparison_val) {
-    FILE * fPtr;
-    fPtr = fopen(EMAIL_PATH, "w");
-    if (fPtr == NULL) {
-        fprintf(stderr, "Unable to create a file on /tmp/email_text.txt\n");
-        return -1;
-    }
-
-    char payload_buffer[2048];
-    snprintf(payload_buffer, sizeof(payload_buffer), "From: <%s>\nTo: <%s>\nSubject: MQTT event\nMQTT subscriber received a JSON value and met the condition\n%s - %s: %s %s %s\n",
-        sender_address, recipient_address, topic, json_name, json_value, operator, comparison_val);
-
-    fputs(payload_buffer, fPtr);
-    fclose(fPtr);
     return 0;
 }
 

@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <string.h>
 #include <curl/curl.h>
+#include <ctype.h>
 
 #include "list.h"
 #include "cJSON.h"
@@ -154,5 +155,24 @@ int curl_send_email(char * email_group, char * recipient_email, char * topic,
  * @param payload MQTT payload (message contents)
  */
 int process_events(char * section_id, char * topic, char * payload);
+
+/**
+ * @brief Create and write email body to a specified file
+ * 
+ * @param sender_address Sender's email address
+ * @param recipient_address Recipient's email address
+ * @param topic MQTT event's topic name
+ * @param json_name MQTT event's tracked JSON variable name
+ * @param json_value MQTT event's tracked JSON variable value
+ * @param comparison_val Value used to compare JSON variable to
+ */
+int create_email_file(char * sender_address, char * recipient_address, char * topic, char * json_name, char * json_value, char * operator, char * comparison_val);
+
+/**
+ * @brief Check if a string contains only numbers
+ * @return 1 - true; 0 - false
+ * 
+ */
+int digits_only(char * s);
 
 #endif

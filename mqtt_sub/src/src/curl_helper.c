@@ -15,12 +15,12 @@ int curl_send_email(char * email_group, char * recipient_email, char * topic,
     char password_command_buffer[64];
     char senderemail_command_buffer[64];
 
-    snprintf(secure_conn_command_buffer, 64, "user_groups.@email[%d].secure_conn", user_group_iteration);
-    snprintf(smtp_ip_command_buffer, 64, "user_groups.@email[%d].smtp_ip", user_group_iteration);
-    snprintf(smtp_port_command_buffer, 64, "user_groups.@email[%d].smtp_port", user_group_iteration);
-    snprintf(username_command_buffer, 64, "user_groups.@email[%d].username", user_group_iteration);
-    snprintf(password_command_buffer, 64, "user_groups.@email[%d].password", user_group_iteration);
-    snprintf(senderemail_command_buffer, 64, "user_groups.@email[%d].senderemail", user_group_iteration);
+    snprintf(secure_conn_command_buffer, sizeof(secure_conn_command_buffer), "user_groups.@email[%d].secure_conn", user_group_iteration);
+    snprintf(smtp_ip_command_buffer, sizeof(smtp_ip_command_buffer), "user_groups.@email[%d].smtp_ip", user_group_iteration);
+    snprintf(smtp_port_command_buffer, sizeof(smtp_port_command_buffer), "user_groups.@email[%d].smtp_port", user_group_iteration);
+    snprintf(username_command_buffer, sizeof(username_command_buffer), "user_groups.@email[%d].username", user_group_iteration);
+    snprintf(password_command_buffer, sizeof(password_command_buffer), "user_groups.@email[%d].password", user_group_iteration);
+    snprintf(senderemail_command_buffer, sizeof(senderemail_command_buffer), "user_groups.@email[%d].senderemail", user_group_iteration);
 
     char * secure_conn = uci_get_config_entry_V2(secure_conn_command_buffer);
     char * smtp_ip = uci_get_config_entry_V2(smtp_ip_command_buffer);
@@ -50,7 +50,7 @@ int curl_send_email(char * email_group, char * recipient_email, char * topic,
     FILE * fPtr;
     fPtr = fopen(EMAIL_PATH, "r");
     if (fPtr == NULL) {
-        fprintf(stderr, "Unable to create a file on /tmp/email_text.txt\n");
+        fprintf(stderr, "Unable to read a file on %s\n", EMAIL_PATH);
         return -1;
     }
 
@@ -85,4 +85,21 @@ int curl_send_email(char * email_group, char * recipient_email, char * topic,
     }
     fclose(fPtr);
     return (int)res;
+}
+
+int create_email_file(char * sender_address, char * recipient_address, char * topic, char * json_name, char * json_value, char * operator, char * comparison_val) {
+    FILE * fPtr;
+    fPtr = fopen(EMAIL_PATH, "w");
+    if (fPtr == NULL) {
+        fprintf(stderr, "Unable to create a file on %s\n", EMAIL_PATH);
+        return -1;
+    }
+
+    char payload_buffer[2048];
+    snprintf(payload_buffer, sizeof(payload_buffer), "From: <%s>\nTo: <%s>\nSubject: MQTT event\nMQTT subscriber received a JSON value and met the condition\n%s - %s: %s %s %s\n",
+        sender_address, recipient_address, topic, json_name, json_value, operator, comparison_val);
+
+    fputs(payload_buffer, fPtr);
+    fclose(fPtr);
+    return 0;
 }

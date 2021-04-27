@@ -6,9 +6,6 @@ local qos
 
 m = Map("mqtt_sub")
 m.redirect = luci.dispatcher.build_url("admin/services/mqtt/subscriber/topics/")
--- if not sid or not m.uci:get(m.config, arg[1]) then
---     luci.http.redirect(m.redirect)
--- end
 
 local topic_name = m.uci:get(sid, "topic") or ""
 local qos = m.uci:get(sid, "qos") or ""
@@ -36,7 +33,7 @@ qos:value("2", "Exactly once (2)")
 qos.rmempty=false
 qos.default="0"
 
-s = m:section(TypedSection, sid, "topic", translate("Events configuration"), translate("Events configuration"))
+s = m:section(TypedSection, sid, translate("Events configuration"), translate("Configure events that will be used to track JSON values and if the condition is met, an email will be sent"))
 s.template = "cbi/tblsection"
 s.template_addremove = "mqtt_sub/event_details"
 s.addremove = true
@@ -52,6 +49,7 @@ function s.create(self, section)
 end
 
 json_val = s:option(Value, "json_val", translate("JSON value name"), translate("JSON value name to track when receiving a message"))
+json_val.rmempty = false
 
 val_type = s:option(ListValue, "val_type", translate("Value type"), translate("Select value type of specified value name"))
 val_type:value("string", translate("String"))
@@ -66,6 +64,7 @@ operator:value(">", translate(">"))
 operator:value(">=", translate(">="))
 
 comparison_val = s:option(Value, "comparison_val", translate("Comparison"), translate("Enter the value that will be compared to"))
+comparison_val.rmempty = false
 
 local is_group = false
 mailGroup = s:option(ListValue, "email_group", translate("Email account"), translate("Recipient's email configuration <br/>(<a href=\"/cgi-bin/luci/admin/system/admin/group/email\" class=\"link\">configure it here</a>)"))
@@ -91,5 +90,6 @@ end
 recpEmail = s:option(Value, "recip_email", translate("Recipient's email address"), translate("For whom you want to send an email to. Allowed characters (a-zA-Z0-9._%+@-)"))
 recpEmail.datatype = "email"
 recpEmail.placeholder = "mail@domain.com"
+recpEmail.rmempty = false
 
 return m
