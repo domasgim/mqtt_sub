@@ -1,47 +1,8 @@
-#include "mqtt_sub.h"
+#include "curl_helper.h"
+#include "uci_option_list.h"
 
-int curl_send_email(char * email_group, char * recipient_email, char * topic, 
-    char * json_name, cJSON * json_value, char * operator, char * comparison_val) {
-    int user_group_iteration = uci_get_user_group_iteration(email_group);
-    if (user_group_iteration == -1) {
-        fprintf(stderr, "Error: %s email group was not found\n", email_group);
-        return -1;
-    }
-
-    char secure_conn_command_buffer[64];
-    char smtp_ip_command_buffer[64];
-    char smtp_port_command_buffer[64];
-    char username_command_buffer[64];
-    char password_command_buffer[64];
-    char senderemail_command_buffer[64];
-
-    snprintf(secure_conn_command_buffer, sizeof(secure_conn_command_buffer), "user_groups.@email[%d].secure_conn", user_group_iteration);
-    snprintf(smtp_ip_command_buffer, sizeof(smtp_ip_command_buffer), "user_groups.@email[%d].smtp_ip", user_group_iteration);
-    snprintf(smtp_port_command_buffer, sizeof(smtp_port_command_buffer), "user_groups.@email[%d].smtp_port", user_group_iteration);
-    snprintf(username_command_buffer, sizeof(username_command_buffer), "user_groups.@email[%d].username", user_group_iteration);
-    snprintf(password_command_buffer, sizeof(password_command_buffer), "user_groups.@email[%d].password", user_group_iteration);
-    snprintf(senderemail_command_buffer, sizeof(senderemail_command_buffer), "user_groups.@email[%d].senderemail", user_group_iteration);
-
-    char * secure_conn = uci_get_config_entry_V2(secure_conn_command_buffer);
-    char * smtp_ip = uci_get_config_entry_V2(smtp_ip_command_buffer);
-    char * smtp_port = uci_get_config_entry_V2(smtp_port_command_buffer);
-    char * username = uci_get_config_entry_V2(username_command_buffer);
-    char * password = uci_get_config_entry_V2(password_command_buffer);
-    char * senderemail = uci_get_config_entry_V2(senderemail_command_buffer);
-
-    if(smtp_ip == NULL || smtp_port == NULL || secure_conn == NULL || senderemail == NULL) {
-        fprintf(stderr, "Null values found in user_groups uci configuration\n");
-        return -1;
-    }
-
-    if(cJSON_IsString(json_value)) {
-        char * json_value_str = json_value->valuestring;
-        create_email_file(senderemail, recipient_email, topic, json_name, json_value_str, operator, comparison_val);
-    } else if (cJSON_IsNumber(json_value)) {
-        char json_value_str[256];
-        snprintf(json_value_str, sizeof(json_value_str), "%d", json_value->valueint);
-        create_email_file(senderemail, recipient_email, topic, json_name, json_value_str, operator, comparison_val);
-    }
+extern int curl_send_email(event_t event, char *json_item, char *topic) {
+    create_email_file(event, json_item, topic);
 
     CURL *curl;
     CURLcode res = CURLE_OK;
@@ -57,21 +18,20 @@ int curl_send_email(char * email_group, char * recipient_email, char * topic,
     char * curl_url_string[64];
     char * curl_userpwd[1024];
 
-    snprintf(curl_url_string, sizeof(curl_url_string), "smtps://%s:%s", smtp_ip, smtp_port);
-    snprintf(curl_userpwd, sizeof(curl_userpwd), "%s:%s", username, password);
+    snprintf(curl_url_string, sizeof(curl_url_string), "smtps://%s:%s", event.smtp_ip, event.smtp_port);
+    snprintf(curl_userpwd, sizeof(curl_userpwd), "%s:%s", event.username, event.password);
 
     curl = curl_easy_init();
     if(curl) {
         curl_easy_setopt(curl, CURLOPT_URL, curl_url_string);
-        curl_easy_setopt(curl, CURLOPT_MAIL_FROM, senderemail);
-        recipients = curl_slist_append(recipients, recipient_email);
+        curl_easy_setopt(curl, CURLOPT_MAIL_FROM, event.senderemail);
+        recipients = curl_slist_append(recipients, event.recip_email);
         curl_easy_setopt(curl, CURLOPT_MAIL_RCPT, recipients);
 
         curl_easy_setopt(curl, CURLOPT_READDATA, fPtr);
         curl_easy_setopt(curl, CURLOPT_UPLOAD, 1L);
         curl_easy_setopt(curl, CURLOPT_USERPWD, curl_userpwd);
         curl_easy_setopt(curl, CURLOPT_USE_SSL, (long)CURLUSESSL_ALL);
-        // curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
 
         res = curl_easy_perform(curl);
 
@@ -87,7 +47,7 @@ int curl_send_email(char * email_group, char * recipient_email, char * topic,
     return (int)res;
 }
 
-int create_email_file(char * sender_address, char * recipient_address, char * topic, char * json_name, char * json_value, char * operator, char * comparison_val) {
+static int create_email_file(event_t event, char *json_item, char *topic) {
     FILE * fPtr;
     fPtr = fopen(EMAIL_PATH, "w");
     if (fPtr == NULL) {
@@ -97,7 +57,7 @@ int create_email_file(char * sender_address, char * recipient_address, char * to
 
     char payload_buffer[2048];
     snprintf(payload_buffer, sizeof(payload_buffer), "From: <%s>\nTo: <%s>\nSubject: MQTT event\nMQTT subscriber received a JSON value and met the condition\n%s - %s: %s %s %s\n",
-        sender_address, recipient_address, topic, json_name, json_value, operator, comparison_val);
+        event.senderemail, event.recip_email, topic, event.json_val, json_item, event.operator_str, event.comparison_val);
 
     fputs(payload_buffer, fPtr);
     fclose(fPtr);

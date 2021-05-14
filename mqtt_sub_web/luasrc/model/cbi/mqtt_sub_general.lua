@@ -7,7 +7,7 @@ local cas = certs.get_ca_files().certs
 map = Map("mqtt_sub")
 
 s = map:section(NamedSection, "config", "mqtt_sub", "MQTT subscriber")
-
+        
 flag = s:option(Flag, "enable", "Enable", "Select to subscribe to a topic")
 flag.default = "0"
 

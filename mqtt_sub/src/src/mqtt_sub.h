@@ -1,7 +1,6 @@
 #ifndef MQTT_SUB_H
 #define MQTT_SUB_H
 
-#include <uci.h>
 #include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -15,54 +14,10 @@
 #include <curl/curl.h>
 #include <ctype.h>
 
-#include "list.h"
-#include "cJSON.h"
-
-#define LOG_PATH "/etc/"
-#define EMAIL_PATH "/tmp/email_text.txt"
-
-/**
- * @brief Get UCI configuration entry object
- * 
- * @param path UCI configuration file name
- * @param option UCI configuration entry name
- * @return char* option
- */
-char * uci_get_config_entry(char *path, char *option);
-
-/**
- * @brief Get UCI configuration option
- * 
- * @param path UCI configuration option path
- * @return char* option
- */
-char * uci_get_config_entry_V2 (char *path);
-
-/**
- * @brief Get UCI configuration entry object list
- * 
- * @param path UCI configuration file name
- * @param option UCI configuration entry name
- * @return list_t* entry list
- */
-list_t * uci_get_config_entry_list(char *path, char *option);
-
-/**
- * @brief Find the user_group UCI configuration section iteration according to the specified email group. 
- * Used to later specify this number while getting user_group information
- * 
- * @param email_group Email group's name which will be used to search in user_group UCI configuration
- * @return int iteration number, -1 for error
- */
-int uci_get_user_group_iteration(char * email_group);
-
-/**
- * @brief Find the section ID of a specifed topic. Used to later read the topi's event information
- * 
- * @param topic topic name
- * @return char* section ID or NULL if nothing was found
- */
-char * uci_get_topic_section_id(char * topic);
+#include "uci_helper.h"
+#include "curl_helper.h"
+#include "mqtt_sub_sql.h"
+#include "uci_option_list.h"
 
 /**
  * @brief Callback called when the client receives a CONNACK message from the broker.
@@ -94,26 +49,6 @@ void on_message(struct mosquitto *mosq, void *obj, const struct mosquitto_messag
 void on_subscribe(struct mosquitto *mosq, void *obj, int mid, int qos_count, const int *granted_qos);
 
 /**
- * @brief Callback called during sql query execution
- * 
- * @param data 
- * @param argc 
- * @param argv 
- * @param azColName 
- * @return int 
- */
-static int sqlite_callback(void *data, int argc, char **argv, char **azColName);
-
-/**
- * @brief Insert mqtt message contents to sqlite3 database
- * 
- * @param topic received mqtt topic name 
- * @param message received mqtt message contents
- * @return int return code
- */
-int sqlite3_insert(sqlite3 * db, char * topic, char * message);
-
-/**
  * @brief Set mosquitto subscriber's username and password if appropriate UCI options are set
  * 
  * @param mosq mosquitto subscriber object
@@ -130,43 +65,42 @@ int mosq_set_username_pw(struct mosquitto * mosq);
 int mosq_set_tls(struct mosquitto * mosq);
 
 /**
- * @brief Send an email notification when MQTT event occurs
+ * @brief Process individual event information and send search for a match with received message
  * 
- * @param email_group Email group specified by configuring MQTT subscriber event options. Linked to user_group UCI configuration
- * @param recipient_email Recipient's email address
- * @param topic MQTT subsciber topic name
- * @param json_name JSON variable name specified by configuring event's options
- * @param json_value JSON variable contents specified by configuring event's options
- * @param operator Operator specified by configuring event's options. Used to compare JSON value to another value
- * @param comparison_val The value used to compare JSON value to
- * @return int return code
+ * @param events Event list
+ * @param topic Received message topic name
+ * @param payload Received message contents
+ * @return int 
  */
-int curl_send_email(char * email_group, char * recipient_email, char * topic, 
-    char * json_name, cJSON * json_value, char * operator, char * comparison_val);
+int process_events(event_node_t *events, char * topic, char * payload);
 
 /**
- * @brief Process event information of a specified topic. It's a bit of a sloppy function which could be improved on
- * but the premise of it is to read UCI configuration files of mqtt_sub which stores the information about events
- * and user_groups which stores the information about email settings. If everything checks out, we send out an email 
- * to the specifed user according to the UCI configuration.
+ * @brief Compare all string options against the event's tracked JSON value. If a condition is met, send an email
  * 
- * @param section_id The section ID of the topic. Each topic has this information in the UCI configuration
- * @param topic MQTT topic name
- * @param payload MQTT payload (message contents)
+ * @param event Event struct containing all information about a specified event
+ * @param json_item Json item to be compared against
+ * @param topic Received message topic name
+ * @return int 
  */
-int process_events(char * section_id, char * topic, char * payload);
+int compare_strings(event_t event, char *json_item, char *topic);
 
 /**
- * @brief Create and write email body to a specified file
+ * @brief Compare all integer options against the event's tracked JSON value. If a condition is met, send an email
  * 
- * @param sender_address Sender's email address
- * @param recipient_address Recipient's email address
- * @param topic MQTT event's topic name
- * @param json_name MQTT event's tracked JSON variable name
- * @param json_value MQTT event's tracked JSON variable value
- * @param comparison_val Value used to compare JSON variable to
+ * @param event Event struct containing all information about a specified event
+ * @param json_item Json item to be compared against
+ * @param topic Received message topic name
+ * @return int 
  */
-int create_email_file(char * sender_address, char * recipient_address, char * topic, char * json_name, char * json_value, char * operator, char * comparison_val);
+int compare_integers(event_t event, int json_item, char *topic);
+
+/**
+ * @brief Configure MQTT subscriber options (check for password/TLS settings)
+ * 
+ * @param mosq Mosquitto subscriber object
+ * @return int 
+ */
+int mosq_setup(struct mosquitto * mosq);
 
 /**
  * @brief Check if a string contains only numbers

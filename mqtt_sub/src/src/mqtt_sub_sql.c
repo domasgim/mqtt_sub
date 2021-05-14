@@ -1,4 +1,15 @@
-#include "mqtt_sub.h"
+#include "mqtt_sub_sql.h"
+
+extern sqlite3 *sqlite3_open_database() {
+    int rc = 0;
+    sqlite3 *db;
+    rc = sqlite3_open(DATABASE_PATH, &db);
+    if(rc) {
+        fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+        return NULL;
+    } 
+    return db;
+}
 
 static int sqlite_callback(void *data, int argc, char **argv, char **azColName) {
    int i;
@@ -12,7 +23,7 @@ static int sqlite_callback(void *data, int argc, char **argv, char **azColName) 
    return 0;
 }
 
-int sqlite3_insert(sqlite3 * db, char * topic, char * message) {
+extern int sqlite3_insert(sqlite3 * db, char * topic, char * message) {
     char *zErrMsg = 0;
     int rc = 0;
     char *sql;
